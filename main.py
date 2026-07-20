@@ -10,12 +10,13 @@ from collections import Counter
 Client_ID = "Ov23lidpJYZy5bxKdEbP"
 
 BG_Color = "#0d1117"
+BG_CARD = "#161b22"
 Text_1 = '#e6edf3'
 Text_2 = '#8b949e'
 Text_Muted = "#484f58"
 Blue = "#58a6ff"
 Green = "#3fb950"
-Danger = "#f85149"
+Red = "#f85149"
 
 root = tk.Tk()
 
@@ -183,7 +184,7 @@ class GitHubAPI:
     def get_headers(self):
         return {"Authorization": f"token {self.oauth.token}"}
     
-    def get_all_events(self);
+    def get_all_events(self):
         if not self.oauth.token or not self.oauth.username:
             return None
         
@@ -268,4 +269,62 @@ class GitHubAPI:
             
         return streak, total_commits, calender
         
+class LoginScreen:
+    def __init__(self, parent, on_login_success):
+        self.parent = parent
+        self.on_login_success = on_login_success
+        self.oauth = GitHubOAuth()
+        self.frame = tk.Frame(parent, bg = BG_Color)
+        self.frame.pack(fille = 'both', expand = True)
+        self.create_ui()
+        
+    def create_ui(self):
+        login_frame = tk.Frame(self.frame, bg = BG_CARD)
+        login_frame.pack(expand = True, fill = 'both', padx = 20, pady = 20)
+        
+        tk.Label(login_frame, text = "🔐", font = ('Segoe UI', 48), fg = Blue, bg = BG_CARD).pack(pady=(30,10))
+        tk.Label(login_frame, text = "Connect Github", font = ('Segoe UI', 18, 'bold'), fg = Text_1, bg=BG_CARD).pack()
+        tk.Label(login_frame, text="Sign in to see your streak", font=('Segoe UI', 10), fg= Text_2, bg=BG_CARD).pack(pady=(5, 20))
+        
+        login_btn = tk.Label(login_frame, text = "Sign in with Github", font=('Segoe UI', 12, 'bold'), fg = 'white', bg = Blue, cursor = 'hand2', padx=20, pady = 8)
+        login_btn.pack(pady=10)
+        login_btn.bind('<Button-1>', lambda e: self.start_login())
+        login_btn.bind('<Enter>', lambda e: login_btn.config(bg='#1f6feb'))
+        login_btn.bind('<Leave>', lambda e: login_btn.config(bg = Blue))
+        
+        self.status = tk.Label(login_frame, text="", font=('Segoe UI', 9), fg = Text_2, bg=BG_CARD)
+        self.status.pack(pady=10)
+        
+        tk.Label(login_frame, text="Your token is stored locally", font=('Segoe UI', 7), fg=Text_Muted, bg=BG_CARD).pack(side='bottom', pady=10)
+        
+    def start_login(self):
+        self.status.config(text = "Starting login...")
+        import threading
+        threading.Thread(target=self._do_login, daemon=True).start()
+        
+    def _do_login(self):
+        def callback(status, message):
+            self.parent.after(0, lambda: self._login_callback(status, message))
+        self.oauth.device_flow_login(callback)
+        
+    def _login_callback(self, status, message):
+        if status == "code":
+            self.status.config(text="Enter this code in browser")
+            parts = message.split('\n')
+            if len(parts) > 1:
+                code = parts[1].replace('Code:', '')
+                code_frame = tk.Frame(self.frame, bg=BG_CARD)
+                code_frame.pack(pady=5)
+                tk.Label(code_frame, text=code, font=('Courier', 20, 'bold'), fg='white', bg='#1f2937', padx=20, pady=10).pack()    
+        
+        elif status == "success":
+            self.status.config(text=f"Success {message}")
+            self.status.config(fg= Green)
+            self.parent.after(1000, self.on_login_success)
+            
+        elif status == "error":
+            self.status.config(text=f"error {message}")
+            self.status.config(fg=Red)
+        
+
 root.mainloop()
