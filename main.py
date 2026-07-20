@@ -18,6 +18,14 @@ Blue = "#58a6ff"
 Green = "#3fb950"
 Red = "#f85149"
 
+CAL_COLORS = { 
+    0: "#161b22",
+    1: "#0e4429",
+    2: "#006d32",
+    3: "#26a641",
+    4: "#39d353"
+}
+
 root = tk.Tk()
 
 root = tk.Tk()
@@ -326,5 +334,126 @@ class LoginScreen:
             self.status.config(text=f"error {message}")
             self.status.config(fg=Red)
         
+class Mainview:
+    def __init__(self, parent, oauth, on_logout):
+        self.parent = parent
+        self.oauth = oauth
+        self.on_logout = on_logout
+        self.api = GitHubAPI(oauth)
+        
+        self.frame = tk.Frame(parent, bg = BG_Color)
+        self.frame.pack(fill='both', expand = True)
+        
+        self.create_ui()
+        self.refresh_data()
+        self.start_auto_refresh()
+        
+    def create_ui(self):
+        header = tk.Frame(self.frame, bg = BG_Color)
+        header.pack(fill='x', pady=(0,12))
+        
+        tk.Label(header, text=f"🔥 {self.oauth.username}", font=('Segoe UI', 12, 'bold'), fg=Text_2, bg=BG_Color).pack(side='left')
+        
+        logout = tk.Label(header, text="Logout", font= ('Segoe UI', 12), fg=Text_2, bg=BG_Color, cursor='hand2')
+        logout.pack(side='right', padx=(0, 8))
+        logout.bind('<Button-1>', lambda e: self.do_logout())
+        
+        streak_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
+        streak_frame.pack(fill='x', pady=(0, 12))
+        
+        self.streak_label = tk.Label(streak_frame, text="--", font = ('Segoe UI', 40, 'bold'), fg = Blue, bg=BG_CARD)
+        self.streak_label.pack(side = 'left', padx = 20, pady = 12)
+        
+        info = tk.Frame(streak_frame, bg = BG_CARD)
+        info.pack(side = 'left', padx = (0, 20))
+        
+        tk.Label(info, text = "DAY STREAK", font = ('Segoe UI', 9), fg = Text_2, bg = BG_CARD).pack(anchor = 'w')
+        
+        self.total_label = tk.Label(info, text = "Loading...", font = ('Segoe UI', 10), fg = Text_2, bg = BG_CARD)
+        self.total_label.pack(anchor='w')
+        
+        refresh = tk.Label(streak_frame, text="⟳", font=('Segoe UI', 16), fg= Text_2, bg=BG_CARD, cursor='hand2')
+        refresh.pack(side='right', padx=12)
+        refresh.bind('<Button-1>', lambda e: self.refresh_data())
+        
+        cal_frame = tk.Frame(self.frame, bg = BG_Color)
+        cal_frame.pack(pady=(0, 8))
+        
+        days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+        for i, day in enumerate(days):
+            tk.Label(cal_frame, text=day, font=('Segoe UI', 8), fg = Text_Muted, bg = BG_Color).grid(row=0, column=i, padx=2, pady=(0, 3))
+            
+        self.cells = []
+        for r in range(7):
+            row = []
+            for c in range(7):
+                cell = tk.Label(cal_frame, width = 3, height = 1, bg = CAL_COLORS[0], relief = 'flat')
+                cell.grid(row = r+1, column = c, padx = 2, pady = 2)
+                row.append(cell)
+            self.cells.appemd(row)
+            
+        self.status = tk.Label(self.frame, text = "Loading data...", font = ('Segoe UI', 8), fg = Text_Muted, bg = BG_Color)
+        self.status.pack(pady=(10,0))
+        
+    def do_logout(self):
+        self.oauth.logout()
+        self.on_logout()
+        
+    def refresh_data(self):
+        self.status.config(text="Fetching Github data...")
+        import threading 
+        threading.Thread(target=self._fetch_data, daemon=True).start()
+        
+    def _fetch_data(self):
+        streak, total, calender = self.api.get_streak_data()
+        self.frame.after(0, lambda: self._update_ui(streak, total, calender))
+        
+    def _update_ui(self, streak, total, calender):
+        if streak is None:
+            self.streak_label.config(text="⚠️", fg=Red)
+            self.total_label.config(text="Error loading")
+            self.status.config(text=" Check network or login again")
+            return
+        
+        self.streak_label.config(text=str(streak), fg=Blue)
+        self.total_label.config(text=f"{total} commits (90 days)")
+        
+        if calender: 
+            today = datetime.now().date()
+            
+            for r in range(7):
+                for c in range(7):
+                    days_ago = (6 - r) * 7 + c
+                    date = today - timedelta(days=days_ago)
+                    count = calender.get(str(date), 0)
+                    
+                    if count == 0:
+                        color = CAL_COLORS[0]
+                    elif count <= 2:
+                        color = CAL_COLORS[1]
+                    elif count <= 4:
+                        color = CAL_COLORS[2]
+                    elif count <= 6:
+                        color = CAL_COLORS[3]
+                    else:
+                        color = CAL_COLORS[4]
+                        
+                    self.cells[r][c].config(bg=color)
+                    
+                    self.cells[r][c].bind('<Enter>',
+                        lambda e, d=str(date), c=count:
+                        self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
+                    self.cells[r][c].bind('<Leave>',
+                        lambda e:
+                        self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
+        
+        self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}") 
+        
+    def start_auto_refresh(self):
+        self.frame.after(300000, self._auto_refresh_loop)
+    
+    def _auto_refresh_loop(self):
+        self.refresh_data()
+        self.frame.after(300000, self._auto_refresh_loop)           
 
 root.mainloop()
