@@ -4,6 +4,8 @@ import json
 import webbrowser
 import time
 from pathlib import Path
+from datetime import datetime, timedelta
+from collections import Counter
 
 Client_ID = "Ov23lidpJYZy5bxKdEbP"
 
@@ -174,5 +176,96 @@ class GitHubOAuth:
             callback("error", f"Login error: {str(e)[:100]}")
             return False
         
-
+class GitHubAPI:
+    def __init__(self, oauth):
+        self.oauth = oauth
+    
+    def get_headers(self):
+        return {"Authorization": f"token {self.oauth.token}"}
+    
+    def get_all_events(self);
+        if not self.oauth.token or not self.oauth.username:
+            return None
+        
+        all_events = []
+        page = 1
+        
+        while True:
+            url = f"https://api.github.com/users/{self.oauth.username}/events"
+            params = {"per_page": 100, "page": page}
+            
+            try:
+                resp = requests.get(
+                    url,
+                    headers=self.get_headers(),
+                    params=params,
+                    timeout=10
+                )
+                
+                if resp.status_code == 401:
+                    print("Token Expired. Please login again.")
+                    return None
+                
+                if resp.status_code != 200:
+                    break
+                
+                events = resp.json()
+                if not events:
+                    break
+                
+                all_events.extend(events)
+                
+                oldest = events[-1].get('created_at', '')
+                if oldest:
+                    oldest_date = datetime.fromisoformat(oldest.replace('Z', '+00:00'))
+                    if (datetime.now() - oldest_date).days > 90:
+                        break
+                page += 1
+                
+            except Exception as e:
+                print(f"Error loading page {page}: {e}")
+                break
+            
+        return all_events if all_events else None
+    
+    def get_streak_data(self):
+        events = self.get_all_events()
+        if not events:
+            return None, None, None
+        
+        commit_dates = []
+        for event in events:
+            if event.get('type') == 'PushEvent':
+                date = event.get('created_at', '').split('T')[0]
+                if date:
+                    commits = event.get('payload', {}).get('commits', [])
+                    commit_count = len(commits) if commits else 1
+                    for _ in range(commit_count):
+                        commit_dates.append(date)
+        
+        if not commit_dates:
+            return 0, 0, {}
+        
+        daily_counts = Counter(commit_dates)
+        total_commits = len(commit_dates)
+        
+        today = datetime.now().date()
+        streak = 0
+        check_date = today
+        
+        while True:
+            date_str = str(check_date)
+            if date_str in daily_counts:
+                streak += 1
+                check_date -= timedelta(days=1)
+            else:
+                break
+            
+        calender = {}
+        for i in range(49):
+            date = today - timedelta(days=i)
+            calender[str(date)] = daily_counts.get(str(date), 0)
+            
+        return streak, total_commits, calender
+        
 root.mainloop()
