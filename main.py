@@ -28,7 +28,6 @@ CAL_COLORS = {
 
 root = tk.Tk()
 
-root = tk.Tk()
 root.title("GitHub Widget")
 root.geometry("380x580")
 root.attributes('-topmost', True)
@@ -50,9 +49,6 @@ close.bind("<Button-1>", lambda e: root.destroy())
 
 main = tk.Frame(root, bg = BG_Color)
 main.pack(fill="both", expand=True, padx=16, pady=16) 
-
-main = tk.Frame(root, bg = BG_Color)
-main.pack(fill = "both", expand = True, padx = 16, pady =16)
 
 login = None
 
@@ -283,7 +279,7 @@ class LoginScreen:
         self.on_login_success = on_login_success
         self.oauth = GitHubOAuth()
         self.frame = tk.Frame(parent, bg = BG_Color)
-        self.frame.pack(fille = 'both', expand = True)
+        self.frame.pack(fill = 'both', expand = True)
         self.create_ui()
         
     def create_ui(self):
@@ -334,7 +330,7 @@ class LoginScreen:
             self.status.config(text=f"error {message}")
             self.status.config(fg=Red)
         
-class Mainview:
+class MainView:
     def __init__(self, parent, oauth, on_logout):
         self.parent = parent
         self.oauth = oauth
@@ -390,7 +386,7 @@ class Mainview:
                 cell = tk.Label(cal_frame, width = 3, height = 1, bg = CAL_COLORS[0], relief = 'flat')
                 cell.grid(row = r+1, column = c, padx = 2, pady = 2)
                 row.append(cell)
-            self.cells.appemd(row)
+            self.cells.append(row)
             
         self.status = tk.Label(self.frame, text = "Loading data...", font = ('Segoe UI', 8), fg = Text_Muted, bg = BG_Color)
         self.status.pack(pady=(10,0))
@@ -454,6 +450,45 @@ class Mainview:
     
     def _auto_refresh_loop(self):
         self.refresh_data()
-        self.frame.after(300000, self._auto_refresh_loop)           
+        self.frame.after(300000, self._auto_refresh_loop)    
+        
+def show_login():
+    global login
+    for widget in main.winfo_children():
+        widget.destroy()
+    login = LoginScreen(main, show_main)
+    main.login = login
+
+def show_main():
+    global login
+    for widget in main.winfo_children():
+        widget.destroy()
+    main_view = MainView(main, login.oauth, show_login)
+    main.main_view = main_view
+        
+def show_main_with_oauth(oauth):
+    for widget in main.winfo_children():
+        widget.destroy()
+    main_view = MainView(main, oauth, show_login)
+    main.main_view = main_view
+        
+def check_login_status():
+    global login    
+    oauth = GitHubOAuth()
+    
+    if oauth.token and oauth.username:
+        def verify():
+            if oauth.test_token():
+                root.after(0, lambda: show_main_with_oauth(oauth))
+            else:
+                root.after(0, show_login)
+            
+        import threading
+        threading.Thread(target=verify, daemon=True).start()
+    else:
+        show_login()
+            
+check_login_status()
+                
 
 root.mainloop()
