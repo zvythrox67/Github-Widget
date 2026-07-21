@@ -315,8 +315,7 @@ class LoginScreen:
         tk.Label(login_frame, text="Connect Github", font=('Segoe UI', 10, 'bold'), fg=Text_1, bg=BG_CARD).pack()
         tk.Label(login_frame, text="Sign in to see your streak", font=('Segoe UI', 10), fg=Text_2, bg=BG_CARD).pack(pady=(5, 20))
 
-        login_btn = tk.Label(login_frame, text="Sign in with Github", font=('Segoe UI', 12, 'bold'),
-                              fg='white', bg=Blue, cursor='hand2', padx=20, pady=8)
+        login_btn = tk.Label(login_frame, text="Sign in with Github", font=('Segoe UI', 12, 'bold'), fg='white', bg=Blue, cursor='hand2', padx=20, pady=8)
         login_btn.pack(pady=10)
         login_btn.bind('<Button-1>', lambda e: self.start_login())
         login_btn.bind('<Enter>', lambda e: login_btn.config(bg='#1f6feb'))
@@ -375,64 +374,47 @@ class FloatingIcon:
             try:
                 self.icon_window.attributes('-transparent', True)
             except tk.TclError:
-                pass
-
+                pass 
+            
         size = 55
         self.icon_window.geometry(f"{size}x{size}")
 
+        screen_width = self.icon_window.winfo_screenwidth()
+        screen_height = self.icon_window.winfo_screenheight()
+        self.icon_window.geometry(f"+{screen_width - size - 20}+{screen_height - size - 40}")
+
         system = platform.system()
         if system == "Windows":
-            emoji_font = ("Segoe UI Emoji", 38)
+            emoji_font = ("Segoe UI Emoji", 30)
         elif system == "Darwin":
-            emoji_font = ("Apple Color Emoji", 38)
+            emoji_font = ("Apple Color Emoji", 30)
         else:
-           emoji_font = ("Noto Color Emoji", 38)
-        
-        self.glow_canvas.place(relx=0.5, rely=0.5, anchor='center')
+            emoji_font = ("Noto Color Emoji", 30)
 
-
-        self.icon_label = tk.Label(
+        self.canvas = tk.Canvas(
             self.icon_window,
-            text="🔥",
-            font=emoji_font,
-            bg=transparent_key,
-            fg="#f0883e",
-            bd=0,
-            highlightthickness=0,
+            width=size, height=size,
+            bg=transparent_key, bd=0, highlightthickness=0,
             cursor='hand2'
         )
-        self.icon_label.pack(expand=True, fill='both')
-        
-        self.icon_label.bind('<Button-1>', self.on_click)
+        self.canvas.pack(fill='both', expand=True)
+
+        flame_id = self.canvas.create_text(
+            size / 2, size / 2,
+            text="\U0001F525", font=emoji_font, fill="#f0883e", tags='flame'
+        )
+        self.canvas.tag_raise(flame_id) 
+
+        self.canvas.bind('<Button-1>', self.on_click)
         self.drag_data = {"x": 0, "y": 0}
-        self.icon_label.bind('<Button-3>', self.start_drag)
-        self.icon_label.bind('<B3-Motion>', self.do_drag)
-        
-        self.glow_canvas = tk.Canvas(
-            self.icon_window,
-            width=size,
-            height=size,
-            bg=transparent_key,
-            bd=0,
-            highlightthickness=0
-        )
-        
-        self.glow_canvas.create_oval(
-            8, 8, size-8, size-8,
-            outline='#f0883e',
-            width=2,
-            tags='glow'
-        )
-        self.glow_canvas.tag_lower('glow')
-        self.glow_canvas.bind('<Button-1>', self.on_click)
-        self.glow_canvas.bind('<Button-3>', self.start_drag)
-        self.glow_canvas.bind('<B3-Motion>', self.do_drag)
+        self.canvas.bind('<Button-3>', self.start_drag)
+        self.canvas.bind('<B3-Motion>', self.do_drag)
 
         self.hide()
 
     def on_click(self, event):
         self.hide()
-        self.on_click_callback() 
+        self.on_click_callback()
 
     def start_drag(self, event):
         self.drag_data["x"] = event.x_root - self.icon_window.winfo_x()
@@ -485,7 +467,7 @@ class MainView:
 
         minimize_btn = tk.Label(header, text="\u2796", font=('Segoe UI', 14), fg=Text_2, bg=BG_Color, cursor='hand2')
         minimize_btn.pack(side='right', padx=5)
-        minimize_btn.bind('<Button-1>', lambda e: self.minimiza_to_icon())
+        minimize_btn.bind('<Button-1>', lambda e: self.minimize_to_icon())
 
         streak_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
         streak_frame.pack(fill='x', pady=(0, 12))
@@ -566,7 +548,7 @@ class MainView:
         self.oauth.logout()
         self.on_logout()
 
-    def minimiza_to_icon(self):
+    def minimize_to_icon(self):
         self.frame.pack_forget()
         root.withdraw()
         if self.on_minimize:
@@ -612,7 +594,7 @@ class MainView:
                     row_cells = []
                     row_dates = []
                     for c in range(7):
-                        cell = tk.Label(self.cells[0][0].master, width=10, height=1, bg=CAL_COLORS[0], relief='flat')
+                        cell = tk.Label(self.cal_frame, width=5, height=1, bg=CAL_COLORS[0], relief='flat')
                         cell.grid(row=len(self.cells) + 1, column=c, padx=1, pady=2, sticky='nsew')
                         row_cells.append(cell)
                         row_dates.append(None)
@@ -648,8 +630,8 @@ class MainView:
 
                             self.cells[r][c].config(bg=color)
 
-                            self.cells[r][c].bind('<Enter>', lambda e, d=date_str, c=count:self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
-                            self.cells[r][c].bind('<Leave>', lambda e:self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
+                            self.cells[r][c].bind('<Enter>', lambda e, d=date_str, c=count: self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
+                            self.cells[r][c].bind('<Leave>', lambda e: self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
                         else:
                             self.cells[r][c].config(bg=CAL_COLORS[0])
 
