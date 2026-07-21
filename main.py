@@ -52,6 +52,8 @@ main = tk.Frame(root, bg = BG_Color)
 main.pack(fill="both", expand=True, padx=16, pady=16) 
 
 login = None
+floating_icon = None
+main_view = None
 
 class GitHubOAuth:
     def __init__(self):
@@ -369,7 +371,7 @@ class FloatingIcon:
             text = "🔥",
             font = ('Segoe UI', 28),
             fg = Blue,
-            bg = BG_Color
+            bg = BG_Color,
             cursor = 'hand2'
         )
         self.icon_label.pack(expand = True, fill = 'both')
@@ -413,10 +415,11 @@ class FloatingIcon:
         self.icon_window.destroy
         
 class MainView:
-    def __init__(self, parent, oauth, on_logout):
+    def __init__(self, parent, oauth, on_logout, on_minimize):
         self.parent = parent
         self.oauth = oauth
         self.on_logout = on_logout
+        self.on_minimize = on_minimize
         self.api = GitHubAPI(oauth)
         
         self.frame = tk.Frame(parent, bg = BG_Color)
@@ -431,6 +434,10 @@ class MainView:
         header.pack(fill='x', pady=(0,12))
         
         tk.Label(header, text=f"🔥 {self.oauth.username}", font=('Segoe UI', 9, 'bold'), fg=Text_2, bg=BG_Color).pack(side='left')
+        
+        minimize_btn = tk.Label(header, text="➖", font=('Segoe UI', 14), fg=Text_2, bg=BG_Color, cursor='hand2')
+        minimize_btn.pack(side='right', padx = 5)
+        minimize_btn.bind('<Button-1>', lambda e: self.minimiza_to_icon())
         
         streak_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
         streak_frame.pack(fill='x', pady=(0, 12))
@@ -509,6 +516,16 @@ class MainView:
     def do_logout(self):
         self.oauth.logout()
         self.on_logout()
+        
+    def minimiza_to_icon(self):
+        self.frame.pack_forget()
+        if self.on_minimize:
+            self.on_minimize()
+            
+    def show(self):
+        self.frame.pack(fill = 'both', expand = True)
+        self.parent.master.deiconify()
+        self.parent.master.lift()
         
     def refresh_data(self):
         self.status.config(text="Fetching Github data...")
@@ -612,6 +629,10 @@ class MainView:
                   
 def show_login():
     global login
+    
+    if floating_icon:
+        floating_icon.hide()
+    
     for widget in main.winfo_children():
         widget.destroy()
     login = LoginScreen(main, show_main)
@@ -619,19 +640,47 @@ def show_login():
 
 def show_main():
     global login
+    
+    if floating_icon:
+        floating_icon.hide()
+    
     for widget in main.winfo_children():
         widget.destroy()
     main_view = MainView(main, login.oauth, show_login)
     main.main_view = main_view
         
 def show_main_with_oauth(oauth):
+    global main_view
+    
     for widget in main.winfo_children():
         widget.destroy()
     main_view = MainView(main, oauth, show_login)
     main.main_view = main_view
+    
+def show_floating_icon():
+    global floating_icon
+    
+    if floating_icon is None:
+        floating_icon = FloatingIcon(root, on_icon_click)
+    floating_icon.show()
+    
+def on_icon_click():
+    global floating_icon, main_view
+    
+    if floating_icon:
+        floating_icon.hide()
+        
+    if main_view:
+        main_view.show()
+    else:
+        check_login_status()
         
 def check_login_status():
     global login    
+    
+    if floating_icon:
+        floating_icon.hide()
+        
     oauth = GitHubOAuth()
     
     if oauth.token and oauth.username:
