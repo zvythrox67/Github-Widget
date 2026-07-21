@@ -11,6 +11,7 @@ Client_ID = "Ov23lidpJYZy5bxKdEbP"
 
 BG_Color = "#0d1117"
 BG_CARD = "#161b22"
+BG_HOVER = "#21262d"
 Text_1 = '#e6edf3'
 Text_2 = '#8b949e'
 Text_Muted = "#484f58"
@@ -28,14 +29,16 @@ CAL_COLORS = {
 }
 
 root = tk.Tk()
-
 root.title("GitHub Widget")
-root.geometry("400x700")
-root.minsize(350, 500)
+root.geometry("350x600")
 root.attributes('-topmost', True)
 root.overrideredirect(False)
 root.attributes('-alpha', 0.9)
-root.configure(bg = BG_Color)
+root.configure(bg=BG_Color)
+root.resizable(False, False)
+
+
+ASPECT_RATIO = 4 / 7
 
 drag_data = {"x": 0, "y": 0}
 def start_drag(e):
@@ -44,10 +47,6 @@ def start_drag(e):
     
 root.bind("<Button-1>", start_drag)
 root.bind("<B1-Motion>", lambda e: root.geometry(f"+{e.x_root - drag_data['x']}+{e.y_root - drag_data['y']}"))
-
-close = tk.Label(root, text="X", font=("Sans-serif",14), fg="white", bg = BG_Color, cursor="hand2")
-close.pack(anchor="ne", padx=10, pady=5)
-close.bind("<Button-1>", lambda e: root.destroy())
 
 main = tk.Frame(root, bg = BG_Color)
 main.pack(fill="both", expand=True, padx=16, pady=16) 
@@ -274,6 +273,21 @@ class GitHubAPI:
             calender[str(date)] = daily_counts.get(str(date), 0)
             
         return streak, total_commits, calender
+    
+    def get_last_commit_info(self):
+        events = self.get_all_events()
+        if not events:
+            return None, None
+        
+        for event in events:
+            if event.get('type') == 'PushEvent':
+                repo = event.get('repo', {}).get('name', 'Unknown')
+                created_at = event.get('created_at', '')
+                if created_at:
+                    commit_time = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    return repo, commit_time
+        
+        return None, None
         
 class LoginScreen:
     def __init__(self, parent, on_login_success):
@@ -288,8 +302,8 @@ class LoginScreen:
         login_frame = tk.Frame(self.frame, bg = BG_CARD)
         login_frame.pack(expand = True, fill = 'both', padx = 20, pady = 20)
         
-        tk.Label(login_frame, text = "🔐", font = ('Segoe UI', 48), fg = Blue, bg = BG_CARD).pack(pady=(30,10))
-        tk.Label(login_frame, text = "Connect Github", font = ('Segoe UI', 18, 'bold'), fg = Text_1, bg=BG_CARD).pack()
+        tk.Label(login_frame, text = "🔐", font = ('Segoe UI', 20), fg = Blue, bg = BG_CARD).pack(pady=(30,10))
+        tk.Label(login_frame, text = "Connect Github", font = ('Segoe UI', 10, 'bold'), fg = Text_1, bg=BG_CARD).pack()
         tk.Label(login_frame, text="Sign in to see your streak", font=('Segoe UI', 10), fg= Text_2, bg=BG_CARD).pack(pady=(5, 20))
         
         login_btn = tk.Label(login_frame, text = "Sign in with Github", font=('Segoe UI', 12, 'bold'), fg = 'white', bg = Blue, cursor = 'hand2', padx=20, pady = 8)
@@ -350,26 +364,18 @@ class MainView:
         header = tk.Frame(self.frame, bg = BG_Color)
         header.pack(fill='x', pady=(0,12))
         
-        tk.Label(header, text=f"🔥 {self.oauth.username}", font=('Segoe UI', 12, 'bold'), fg=Text_2, bg=BG_Color).pack(side='left')
-        
-        logout = tk.Label(header, text="Logout", font= ('Segoe UI', 12), fg=Text_2, bg=BG_Color, cursor='hand2')
-        logout.pack(side='right', padx=(0, 8))
-        logout.bind('<Button-1>', lambda e: self.do_logout())
+        tk.Label(header, text=f"🔥 {self.oauth.username}", font=('Segoe UI', 9, 'bold'), fg=Text_2, bg=BG_Color).pack(side='left')
         
         streak_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
         streak_frame.pack(fill='x', pady=(0, 12))
         
-        refresh = tk.Label(streak_frame, text="⟳", font=('Segoe UI', 16), fg= Text_2, bg=BG_CARD, cursor='hand2')
-        refresh.pack(side='right', padx=12)
-        refresh.bind('<Button-1>', lambda e: self.refresh_data())
-        
         repo_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
         repo_frame.pack(fill='x', pady=(0, 12))
         
-        self.repo_label = tk.Label(repo_frame, text="Loading repo info...", font=('Segoe UI', 10), fg=Text_2, bg=BG_CARD)
+        self.repo_label = tk.Label(repo_frame, text="Loading repo info...", font=('Segoe UI', 9), fg=Text_2, bg=BG_CARD)
         self.repo_label.pack(side='left', padx=16, pady=8)
         
-        self.streak_label = tk.Label(streak_frame, text="--", font = ('Segoe UI', 40, 'bold'), fg = Blue, bg=BG_CARD)
+        self.streak_label = tk.Label(streak_frame, text="--", font = ('Segoe UI', 20, 'bold'), fg = Blue, bg=BG_CARD)
         self.streak_label.pack(side = 'left', padx = 20, pady = 12)
         
         info = tk.Frame(streak_frame, bg = BG_CARD)
@@ -377,10 +383,10 @@ class MainView:
         
         tk.Label(info, text = "DAY STREAK", font = ('Segoe UI', 9), fg = Text_2, bg = BG_CARD).pack(anchor = 'w')
         
-        self.total_label = tk.Label(info, text = "Loading...", font = ('Segoe UI', 10), fg = Text_2, bg = BG_CARD)
+        self.total_label = tk.Label(info, text = "Loading...", font = ('Segoe UI', 8), fg = Text_2, bg = BG_CARD)
         self.total_label.pack(anchor='w')
         
-        refresh = tk.Label(streak_frame, text="⟳", font=('Segoe UI', 16), fg= Text_2, bg=BG_CARD, cursor='hand2')
+        refresh = tk.Label(streak_frame, text="⟳", font=('Segoe UI', 10), fg= Text_2, bg=BG_CARD, cursor='hand2')
         refresh.pack(side='right', padx=12)
         refresh.bind('<Button-1>', lambda e: self.refresh_data())
         
@@ -399,20 +405,22 @@ class MainView:
         cal_canvas.pack(side="left", fill="both", expand=True)
         cal_scrollbar.pack(side="right", fill="y")
 
+        for i in range(7):
+            cal_frame.grid_columnconfigure(i, weight=1)
+
         days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
         for i, day in enumerate(days):
-            tk.Label(cal_frame, text=day, font=('Segoe UI', 8), fg=Text_Muted, bg=BG_Color).grid(row=0, column=i, padx=2, pady=(0, 3))
+            tk.Label(cal_frame, text=day, font=('Segoe UI', 8), fg=Text_Muted, bg=BG_Color).grid(row=0, column=i, padx=1, pady=(0, 3), sticky='nsew')
 
         self.cells = []
         self.cell_dates = []
-        
+
         for r in range(15):
             row_cells = []
             row_dates = []
             for c in range(7):
-                cell = tk.Label(cal_frame, width=3, height=1, 
-                            bg=CAL_COLORS[0], relief='flat')
-                cell.grid(row=r+1, column=c, padx=2, pady=2)
+                cell = tk.Label(cal_frame, width=5, height=1, bg=CAL_COLORS[0], relief='flat')
+                cell.grid(row=r+1, column=c, padx=1, pady=2, sticky='nsew') 
                 row_cells.append(cell)
                 row_dates.append(None)
             self.cells.append(row_cells)
@@ -423,6 +431,15 @@ class MainView:
         self.status = tk.Label(self.frame, text = "Loading data...", font = ('Segoe UI', 8), fg = Text_Muted, bg = BG_Color)
         self.status.pack(pady=(10,0))
         
+        logout_frame = tk.Frame(self.frame, bg=BG_Color)
+        logout_frame.pack(fill='x', pady=(16, 4))
+        
+        logout_btn = tk.Label(logout_frame, text="🚪 Logout", font=('Segoe UI', 10), fg=Text_2, bg=BG_HOVER, cursor='hand2', padx=16, pady=6) 
+        logout_btn.pack(side='bottom')
+        logout_btn.bind('<Button-1>', lambda e: self.do_logout())
+        logout_btn.bind('<Enter>', lambda e: logout_btn.config(bg='#30363d'))
+        logout_btn.bind('<Leave>', lambda e: logout_btn.config(bg=BG_HOVER))
+        
     def do_logout(self):
         self.oauth.logout()
         self.on_logout()
@@ -432,11 +449,7 @@ class MainView:
         import threading 
         threading.Thread(target=self._fetch_data, daemon=True).start()
         
-    def _fetch_data(self):
-        streak, total, calender = self.api.get_streak_data()
-        self.frame.after(0, lambda: self._update_ui(streak, total, calender))
-        
-    def _update_ui(self, streak, total, calender):
+    def _update_ui(self, streak, total, calender, repo=None, last_commit_time=None):
         if streak is None:
             self.streak_label.config(text="⚠️", fg=Red)
             self.total_label.config(text="Error loading")
@@ -446,10 +459,18 @@ class MainView:
         self.streak_label.config(text=str(streak), fg=Blue)
         self.total_label.config(text=f"{total} commits (90 days)")
         
+        if repo:
+            time_str = "Today" if last_commit_time.date() == datetime.now().date() else last_commit_time.strftime('%b %d')
+            self.repo_label.config(text=f"📁 {repo}  •  Last commit: {time_str}")
+        else:
+            self.repo_label.config(text="📁 No recent commits found")
+                
+        if calender: 
+            today = datetime.now().date()
+        
         if calender: 
             today = datetime.now().date()
             
-            # Get all dates in the calendar
             dates = sorted(calender.keys())
             if dates:
                 earliest = datetime.strptime(dates[0], '%Y-%m-%d').date()
@@ -461,9 +482,8 @@ class MainView:
                     row_cells = []
                     row_dates = []
                     for c in range(7):
-                        cell = tk.Label(self.cells[0][0].master, width=3, height=1, 
-                                    bg=CAL_COLORS[0], relief='flat')
-                        cell.grid(row=len(self.cells)+1, column=c, padx=2, pady=2)
+                        cell = tk.Label(self.cells[0][0].master, width= 10, height=1,bg=CAL_COLORS[0], relief='flat')
+                        cell.grid(row=len(self.cells)+1, column=c, padx=1, pady=2, sticky='nsew')
                         row_cells.append(cell)
                         row_dates.append(None)
                     self.cells.append(row_cells)
@@ -477,11 +497,9 @@ class MainView:
                         date = start_date + timedelta(days=(r * 7 + c))
                         date_str = str(date)
                         
-                        # Store date for tooltip
                         self.cell_dates[r][c] = date
                         
                         if date > today:
-                            # FUTURE DAY - lighter color (NEW)
                             self.cells[r][c].config(bg=CAL_COLORS[5])
                             self.cells[r][c].unbind('<Enter>')
                             self.cells[r][c].unbind('<Leave>')
@@ -500,7 +518,6 @@ class MainView:
                             
                             self.cells[r][c].config(bg=color)
                             
-                            # Tooltip on hover
                             self.cells[r][c].bind('<Enter>',
                                 lambda e, d=date_str, c=count:
                                 self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
@@ -508,18 +525,25 @@ class MainView:
                                 lambda e:
                                 self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
                         else:
-                            # Date not in calendar (shouldn't happen)
                             self.cells[r][c].config(bg=CAL_COLORS[0])
                 
                 self.cal_canvas.configure(scrollregion=self.cal_canvas.bbox("all")) 
+                
+                
         
     def start_auto_refresh(self):
         self.frame.after(300000, self._auto_refresh_loop)
     
     def _auto_refresh_loop(self):
         self.refresh_data()
-        self.frame.after(300000, self._auto_refresh_loop)    
+        self.frame.after(300000, self._auto_refresh_loop)   
         
+    def _fetch_data(self):
+        streak, total, calender = self.api.get_streak_data()
+        repo, last_commit_time = self.api.get_last_commit_info() 
+        self.frame.after(0, lambda: self._update_ui(streak, total, calender, repo, last_commit_time)) 
+    
+                  
 def show_login():
     global login
     for widget in main.winfo_children():
