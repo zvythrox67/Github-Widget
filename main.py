@@ -19,19 +19,21 @@ Green = "#3fb950"
 Red = "#f85149"
 
 CAL_COLORS = { 
-    0: "#161b22",
-    1: "#0e4429",
-    2: "#006d32",
-    3: "#26a641",
-    4: "#39d353"
+    0: "#161b22",      
+    1: "#0e4429",      
+    2: "#006d32",      
+    3: "#26a641",      
+    4: "#39d353",      
+    5: "#1f2937"       
 }
 
 root = tk.Tk()
 
 root.title("GitHub Widget")
-root.geometry("380x580")
+root.geometry("400x700")
+root.minsize(350, 500)
 root.attributes('-topmost', True)
-root.overrideredirect(True)
+root.overrideredirect(False)
 root.attributes('-alpha', 0.9)
 root.configure(bg = BG_Color)
 
@@ -357,6 +359,16 @@ class MainView:
         streak_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
         streak_frame.pack(fill='x', pady=(0, 12))
         
+        refresh = tk.Label(streak_frame, text="⟳", font=('Segoe UI', 16), fg= Text_2, bg=BG_CARD, cursor='hand2')
+        refresh.pack(side='right', padx=12)
+        refresh.bind('<Button-1>', lambda e: self.refresh_data())
+        
+        repo_frame = tk.Frame(self.frame, bg=BG_CARD, relief='flat', bd=1)
+        repo_frame.pack(fill='x', pady=(0, 12))
+        
+        self.repo_label = tk.Label(repo_frame, text="Loading repo info...", font=('Segoe UI', 10), fg=Text_2, bg=BG_CARD)
+        self.repo_label.pack(side='left', padx=16, pady=8)
+        
         self.streak_label = tk.Label(streak_frame, text="--", font = ('Segoe UI', 40, 'bold'), fg = Blue, bg=BG_CARD)
         self.streak_label.pack(side = 'left', padx = 20, pady = 12)
         
@@ -372,21 +384,41 @@ class MainView:
         refresh.pack(side='right', padx=12)
         refresh.bind('<Button-1>', lambda e: self.refresh_data())
         
-        cal_frame = tk.Frame(self.frame, bg = BG_Color)
-        cal_frame.pack(pady=(0, 8))
-        
+        calendar_container = tk.Frame(self.frame, bg=BG_Color)
+        calendar_container.pack(fill='both', expand=True, pady=(0, 8))
+
+        cal_canvas = tk.Canvas(calendar_container, bg=BG_Color, highlightthickness=0)
+        cal_scrollbar = tk.Scrollbar(calendar_container, orient="vertical", command=cal_canvas.yview)
+        cal_frame = tk.Frame(cal_canvas, bg=BG_Color)
+
+        cal_frame.bind("<Configure>", lambda e: cal_canvas.configure(scrollregion=cal_canvas.bbox("all")))
+
+        cal_canvas.create_window((0, 0), window=cal_frame, anchor="nw")
+        cal_canvas.configure(yscrollcommand=cal_scrollbar.set)
+
+        cal_canvas.pack(side="left", fill="both", expand=True)
+        cal_scrollbar.pack(side="right", fill="y")
+
         days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
         for i, day in enumerate(days):
-            tk.Label(cal_frame, text=day, font=('Segoe UI', 8), fg = Text_Muted, bg = BG_Color).grid(row=0, column=i, padx=2, pady=(0, 3))
-            
+            tk.Label(cal_frame, text=day, font=('Segoe UI', 8), fg=Text_Muted, bg=BG_Color).grid(row=0, column=i, padx=2, pady=(0, 3))
+
         self.cells = []
-        for r in range(7):
-            row = []
+        self.cell_dates = []
+        
+        for r in range(15):
+            row_cells = []
+            row_dates = []
             for c in range(7):
-                cell = tk.Label(cal_frame, width = 3, height = 1, bg = CAL_COLORS[0], relief = 'flat')
-                cell.grid(row = r+1, column = c, padx = 2, pady = 2)
-                row.append(cell)
-            self.cells.append(row)
+                cell = tk.Label(cal_frame, width=3, height=1, 
+                            bg=CAL_COLORS[0], relief='flat')
+                cell.grid(row=r+1, column=c, padx=2, pady=2)
+                row_cells.append(cell)
+                row_dates.append(None)
+            self.cells.append(row_cells)
+            self.cell_dates.append(row_dates)
+
+        self.cal_canvas = cal_canvas 
             
         self.status = tk.Label(self.frame, text = "Loading data...", font = ('Segoe UI', 8), fg = Text_Muted, bg = BG_Color)
         self.status.pack(pady=(10,0))
@@ -417,33 +449,69 @@ class MainView:
         if calender: 
             today = datetime.now().date()
             
-            for r in range(7):
-                for c in range(7):
-                    days_ago = (6 - r) * 7 + c
-                    date = today - timedelta(days=days_ago)
-                    count = calender.get(str(date), 0)
-                    
-                    if count == 0:
-                        color = CAL_COLORS[0]
-                    elif count <= 2:
-                        color = CAL_COLORS[1]
-                    elif count <= 4:
-                        color = CAL_COLORS[2]
-                    elif count <= 6:
-                        color = CAL_COLORS[3]
-                    else:
-                        color = CAL_COLORS[4]
+            # Get all dates in the calendar
+            dates = sorted(calender.keys())
+            if dates:
+                earliest = datetime.strptime(dates[0], '%Y-%m-%d').date()
+                
+                days_range = (today - earliest).days + 1
+                weeks_needed = (days_range // 7) + 2
+                
+                while len(self.cells) < weeks_needed + 1:
+                    row_cells = []
+                    row_dates = []
+                    for c in range(7):
+                        cell = tk.Label(self.cells[0][0].master, width=3, height=1, 
+                                    bg=CAL_COLORS[0], relief='flat')
+                        cell.grid(row=len(self.cells)+1, column=c, padx=2, pady=2)
+                        row_cells.append(cell)
+                        row_dates.append(None)
+                    self.cells.append(row_cells)
+                    self.cell_dates.append(row_dates)
+                
+                days_since_monday = earliest.weekday()
+                start_date = earliest - timedelta(days=days_since_monday)
+                
+                for r in range(len(self.cells)):
+                    for c in range(7):
+                        date = start_date + timedelta(days=(r * 7 + c))
+                        date_str = str(date)
                         
-                    self.cells[r][c].config(bg=color)
-                    
-                    self.cells[r][c].bind('<Enter>',
-                        lambda e, d=str(date), c=count:
-                        self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
-                    self.cells[r][c].bind('<Leave>',
-                        lambda e:
-                        self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
-        
-        self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}") 
+                        # Store date for tooltip
+                        self.cell_dates[r][c] = date
+                        
+                        if date > today:
+                            # FUTURE DAY - lighter color (NEW)
+                            self.cells[r][c].config(bg=CAL_COLORS[5])
+                            self.cells[r][c].unbind('<Enter>')
+                            self.cells[r][c].unbind('<Leave>')
+                        elif date_str in calender:
+                            count = calender[date_str]
+                            if count == 0:
+                                color = CAL_COLORS[0]
+                            elif count <= 2:
+                                color = CAL_COLORS[1]
+                            elif count <= 4:
+                                color = CAL_COLORS[2]
+                            elif count <= 6:
+                                color = CAL_COLORS[3]
+                            else:
+                                color = CAL_COLORS[4]
+                            
+                            self.cells[r][c].config(bg=color)
+                            
+                            # Tooltip on hover
+                            self.cells[r][c].bind('<Enter>',
+                                lambda e, d=date_str, c=count:
+                                self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
+                            self.cells[r][c].bind('<Leave>',
+                                lambda e:
+                                self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
+                        else:
+                            # Date not in calendar (shouldn't happen)
+                            self.cells[r][c].config(bg=CAL_COLORS[0])
+                
+                self.cal_canvas.configure(scrollregion=self.cal_canvas.bbox("all")) 
         
     def start_auto_refresh(self):
         self.frame.after(300000, self._auto_refresh_loop)
