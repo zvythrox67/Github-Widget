@@ -14,32 +14,6 @@ icon to bring the full widget back.
 - Auto-refreshes every 5 minutes
 - Minimizes to a small draggable flame icon instead of closing
 - 
-## How it works
-
-- **Login**: uses [GitHub's OAuth Device Flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
-  The app requests a code from GitHub, shows it to you, and opens your
-  browser to GitHub's device-activation page. Once you enter the code and
-  approve access, GitHub hands the app a token, which is saved locally to
-  `~/.github_widget_token` so you don't have to log in every time.
-- **Data**: pulls your public event history from the GitHub REST API
-  (`/users/{username}/events`), counts `PushEvent`s to work out your daily
-  commit counts, current streak, and most recent repo.
-- **UI**: built with Tkinter (Python's built-in GUI toolkit). The window has
-  no native title bar (`overrideredirect`) so it looks like a widget rather
-  than a normal app window — click and drag anywhere on it to move it.
-- **Minimized icon**: a separate small always-on-top window with a
-  transparent background (via a chroma-key trick, since Tk can't do true
-  per-pixel transparency on its own) showing just the flame. Left-click
-  restores the widget; right-click-drag repositions the icon.
-
-## Requirements
-
-- Python 3.8+
-- The `requests` library
-- A GitHub account
-- (Windows/macOS recommended — the background transparency trick used for
-  the minimized icon doesn't reliably work on stock Linux Tk; the icon will
-  still function there, just with a small solid square behind it)
 
 ## Setup
 
@@ -54,7 +28,7 @@ icon to bring the full widget back.
 Client_ID = "YOUR_CLIENT_ID_HERE"
 ```
 
-7. Install requests
+7. Install requests 
 
 ```bash
 pip install requests
