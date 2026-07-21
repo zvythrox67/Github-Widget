@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import Counter
+import platform
 
 Client_ID = "Ov23lidpJYZy5bxKdEbP"
 
@@ -32,7 +33,7 @@ root = tk.Tk()
 root.title("GitHub Widget")
 root.geometry("350x600")
 root.attributes('-topmost', True)
-root.overrideredirect(True)          # frameless / no native title bar
+root.overrideredirect(True)
 root.attributes('-alpha', 0.9)
 root.configure(bg=BG_Color)
 root.resizable(False, False)
@@ -45,7 +46,6 @@ def start_drag(e):
 root.bind("<Button-1>", start_drag)
 root.bind("<B1-Motion>", lambda e: root.geometry(f"+{e.x_root - drag_data['x']}+{e.y_root - drag_data['y']}"))
 
-# Custom close button (needed since overrideredirect removes the native one)
 close_btn = tk.Label(root, text="\u2715", font=("Segoe UI", 12), fg=Text_2, bg=BG_Color, cursor="hand2")
 close_btn.place(relx=1.0, x=-14, y=8, anchor="ne")
 close_btn.bind("<Button-1>", lambda e: root.destroy())
@@ -358,9 +358,6 @@ class LoginScreen:
 
 
 class FloatingIcon:
-    """Small always-on-top fire icon shown when the widget is minimized.
-    Left-click restores the widget. Right-click-drag repositions the icon."""
-
     def __init__(self, root, on_click_callback):
         self.root = root
         self.on_click_callback = on_click_callback
@@ -370,57 +367,72 @@ class FloatingIcon:
         self.icon_window.overrideredirect(True)
         self.icon_window.attributes('-topmost', True)
 
-        # Chroma-key trick: fill the window with a color nothing else will
-        # use, then tell the OS to treat that exact color as see-through.
-        # That's what removes the square background/border around the emoji.
         transparent_key = "#123456"
         self.icon_window.configure(bg=transparent_key)
         try:
-            self.icon_window.attributes('-transparentcolor', transparent_key)   # Windows
+            self.icon_window.attributes('-transparentcolor', transparent_key)
         except tk.TclError:
             try:
-                self.icon_window.attributes('-transparent', True)                # macOS
+                self.icon_window.attributes('-transparent', True)
             except tk.TclError:
-                pass  # Linux: stock Tk has no reliable per-pixel transparency;
-                      # the icon keeps a small solid-color square behind it there.
+                pass
 
-        self.icon_window.geometry("60x60")
+        size = 55
+        self.icon_window.geometry(f"{size}x{size}")
 
-        screen_width = self.icon_window.winfo_screenwidth()
-        screen_height = self.icon_window.winfo_screenheight()
-        # NOTE: no spaces allowed in a Tk geometry string ("+x+y")
-        self.icon_window.geometry(f"+{screen_width - 80}+{screen_height - 100}")
-
-        import platform
         system = platform.system()
         if system == "Windows":
-            emoji_font = ("Segoe UI Emoji", 34)
+            emoji_font = ("Segoe UI Emoji", 38)
         elif system == "Darwin":
-            emoji_font = ("Apple Color Emoji", 34)
+            emoji_font = ("Apple Color Emoji", 38)
         else:
-            emoji_font = ("Noto Color Emoji", 34)
+           emoji_font = ("Noto Color Emoji", 38)
+        
+        self.glow_canvas.place(relx=0.5, rely=0.5, anchor='center')
+
 
         self.icon_label = tk.Label(
             self.icon_window,
-            text="\U0001F525",
+            text="🔥",
             font=emoji_font,
             bg=transparent_key,
+            fg="#f0883e",
             bd=0,
             highlightthickness=0,
             cursor='hand2'
         )
         self.icon_label.pack(expand=True, fill='both')
-
+        
         self.icon_label.bind('<Button-1>', self.on_click)
         self.drag_data = {"x": 0, "y": 0}
         self.icon_label.bind('<Button-3>', self.start_drag)
         self.icon_label.bind('<B3-Motion>', self.do_drag)
+        
+        self.glow_canvas = tk.Canvas(
+            self.icon_window,
+            width=size,
+            height=size,
+            bg=transparent_key,
+            bd=0,
+            highlightthickness=0
+        )
+        
+        self.glow_canvas.create_oval(
+            8, 8, size-8, size-8,
+            outline='#f0883e',
+            width=2,
+            tags='glow'
+        )
+        self.glow_canvas.tag_lower('glow')
+        self.glow_canvas.bind('<Button-1>', self.on_click)
+        self.glow_canvas.bind('<Button-3>', self.start_drag)
+        self.glow_canvas.bind('<B3-Motion>', self.do_drag)
 
         self.hide()
 
     def on_click(self, event):
         self.hide()
-        self.on_click_callback()   # was missing () before - callback never fired
+        self.on_click_callback() 
 
     def start_drag(self, event):
         self.drag_data["x"] = event.x_root - self.icon_window.winfo_x()
@@ -447,7 +459,7 @@ class FloatingIcon:
             self.show()
 
     def destroy(self):
-        self.icon_window.destroy()   # was missing () before
+        self.icon_window.destroy()
 
 
 class MainView:
@@ -536,6 +548,7 @@ class MainView:
             self.cell_dates.append(row_dates)
 
         self.cal_canvas = cal_canvas
+        self.cal_frame = cal_frame
 
         self.status = tk.Label(self.frame, text="Loading data...", font=('Segoe UI', 8), fg=Text_Muted, bg=BG_Color)
         self.status.pack(pady=(10, 0))
@@ -555,7 +568,7 @@ class MainView:
 
     def minimiza_to_icon(self):
         self.frame.pack_forget()
-        root.withdraw()            # actually hide the (now-empty) window, not just its contents
+        root.withdraw()
         if self.on_minimize:
             self.on_minimize()
 
@@ -635,12 +648,8 @@ class MainView:
 
                             self.cells[r][c].config(bg=color)
 
-                            self.cells[r][c].bind('<Enter>',
-                                lambda e, d=date_str, c=count:
-                                self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
-                            self.cells[r][c].bind('<Leave>',
-                                lambda e:
-                                self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
+                            self.cells[r][c].bind('<Enter>', lambda e, d=date_str, c=count:self.status.config(text=f"{d}: {c} commit{'s' if c != 1 else ''}"))
+                            self.cells[r][c].bind('<Leave>', lambda e:self.status.config(text=f"Updated {datetime.now().strftime('%H:%M')}"))
                         else:
                             self.cells[r][c].config(bg=CAL_COLORS[0])
 
@@ -660,7 +669,7 @@ class MainView:
 
 
 def show_login():
-    global login
+    global login, floating_icon
 
     if floating_icon:
         floating_icon.hide()
@@ -673,7 +682,7 @@ def show_login():
 
 
 def show_main():
-    global login, main_view
+    global login, main_view, floating_icon
 
     if floating_icon:
         floating_icon.hide()
@@ -715,7 +724,7 @@ def on_icon_click():
 
 
 def check_login_status():
-    global login
+    global login, floating_icon
 
     if floating_icon:
         floating_icon.hide()
