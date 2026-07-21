@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from collections import Counter
 import platform
 
-Client_ID = "Ov23lidpJYZy5bxKdEbP"
+Client_ID = "YOUR_CLIENT_ID_HERE"
 
 BG_Color = "#0d1117"
 BG_CARD = "#161b22"
