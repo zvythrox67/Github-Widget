@@ -346,6 +346,72 @@ class LoginScreen:
             self.status.config(text=f"error {message}")
             self.status.config(fg=Red)
         
+class FloatingIcon:
+    def __init__(self, root, on_click_callback):
+        self.toot = root
+        self.on_click_callback = on_click_callback
+        self.is_visible = True
+        
+        self.icon_window = tk.Toplevel(root)
+        self.icon_window.overrideredirect(True)
+        self.icon_window.attributes('-topmost', True)
+        self.icon_window.attributes('-alpha', 0.95)
+        self.icon_window.configure(bg = BG_Color)
+        
+        self.icon_window.geometry("50x50")
+        
+        screen_width = self.icon_window.winfo_screenwidth()
+        screen_height = self.icon_window.winfo_screenheight()
+        self.icon_window.geometry(f"+{screen_width - 70} + {screen_height - 90}")
+        
+        self.icon_label = tk.Label(
+            self.icon_window,
+            text = "🔥",
+            font = ('Segoe UI', 28),
+            fg = Blue,
+            bg = BG_Color
+            cursor = 'hand2'
+        )
+        self.icon_label.pack(expand = True, fill = 'both')
+        
+        self.icon_label.bind('<Button-1>', self.on_click)
+        self.drag_data = {"x": 0, "y":0}
+        self.icon_label.bind('<Button-3>', self.start_drag)
+        self.icon_label.bind('<B3-Motion>', self.do_drag)
+        
+        self.hide()
+        
+    def on_click(self, event):
+        self.hide()
+        self.on_click_callback
+        
+    def start_drag(self, event):
+        self.drag_data["x"] = event.x_root - self.icon_window.winfo_x()
+        self.drag_data["y"] = event.y_root - self.icon_window.winfo_y()
+        
+    def do_drag(self, event):
+        x = event.x_root - self.drag_data["x"]
+        y = event.y_root - self.drag_data["y"]
+        self.icon_window.geometry(f"+{x}+{y}")
+        
+    def show(self):
+        self.icon_window.deiconify()
+        self.icon_window.lift()
+        self.is_visible = True
+        
+    def hide(self):
+        self.icon_window.withdraw()
+        self.is_visible = False
+        
+    def toggle(self):
+        if self.is_visible:
+            self.hide()
+        else:
+            self.show()
+            
+    def destroy(self):
+        self.icon_window.destroy
+        
 class MainView:
     def __init__(self, parent, oauth, on_logout):
         self.parent = parent
