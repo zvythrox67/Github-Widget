@@ -1,24 +1,19 @@
 # GitHub Streak Widget
 
-A borderless, always-on-top desktop widget that shows your live GitHub commit
-streak, a scrolling contribution calendar, and your most recent repo/commit —
-right on your desktop, like a sticky note. Minimize it and it collapses into
+A  desktop widget that shows your live GitHub commit streak, a scrolling contribution calendar, and your most recent repo/commit. Minimize it and it collapses into
 a small always-on-top flame icon you can drag anywhere on screen; click the
 icon to bring the full widget back.
 
 ## What it does
 
-- Signs in with your **real GitHub account** via OAuth Device Flow — no
-  manual token pasting
+- Signs in with your **real GitHub account** via OAuth Device Flow
 - Shows your current commit streak and total commits (last 90 days)
-- Shows a growing calendar of daily commit activity, color-coded like
-  GitHub's own contribution graph
-- Shows your most recently pushed-to repo and when
+- Shows a  calendar of daily commit activity, color-coded just like
+  GitHub's  temperature graph
+- Shows your most recently  repo where u recently pushed/did your commits to and when you did it.
 - Auto-refreshes every 5 minutes
 - Minimizes to a small draggable flame icon instead of closing
-- Remembers you between runs (cached login token) — no re-login needed
-  unless you log out
-
+- 
 ## How it works
 
 - **Login**: uses [GitHub's OAuth Device Flow](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps#device-flow).
@@ -48,79 +43,28 @@ icon to bring the full widget back.
 
 ## Setup
 
-### 1. Create a GitHub OAuth App
-
-- Go to [github.com/settings/developers](https://github.com/settings/developers) → **New OAuth App**
-- Fill in any name, homepage URL, and callback URL — Device Flow doesn't
-  actually use them, e.g. `http://localhost` works fine for both
-- Click **Register application**
-
-### 2. Enable Device Flow
-
-- Open your new app's settings page
-- Check **Enable Device Flow** — this is a separate step from creating the
-  app, easy to miss, and the #1 cause of a "Failed to start login" error
-- Copy the **Client ID** shown at the top of the page
-
-### 3. Configure the script
-
-Open the `.py` file and paste your Client ID in:
+1. Go to [github.com/settings/developers](https://github.com/settings/developers) and Fill in any name, homepage URL, and callback URL.
+2. Click **Register application**
+3. Open your new app's settings page
+4. **Enable Device Flow**, if you dont do this, you'll get a "Failed to start login" error
+5. Copy the **Client ID** shown at the top of the page 
+6. Open the `main.py` file and paste your Client ID in:
 
 ```python
 Client_ID = "YOUR_CLIENT_ID_HERE"
 ```
 
-### 4. Install dependencies
+7. Install requests
 
 ```bash
 pip install requests
 ```
 
-### 5. Run it
+8. Run the file
+9. First time you run, it will load a screen that says **Sign in with GitHub**. Click it
+10. A code will pop up and your browser will open automatically to GitHub
+11. Enter the code, and approve access.
 
-```bash
-python github_streak_widget.py
-```
+**Your Widget is now Working!**
 
-## First run
 
-A login screen appears with a **Sign in with GitHub** button. Click it — a
-code will pop up and your browser will open automatically to GitHub's device
-page. Enter the code, approve access, and the widget switches to your live
-streak. Your session is cached, so future runs skip straight to the widget.
-
-## Using it day-to-day
-
-- **Move it**: click and drag anywhere on the widget
-- **Minimize**: click the ➖ in the top-right of the widget — it collapses
-  into a small flame icon
-- **Restore**: left-click the flame icon
-- **Reposition the icon**: right-click-drag it anywhere on screen
-- **Refresh manually**: click the ⟳ icon next to your streak
-- **Log out** (e.g. to switch accounts): click **🚪 Logout** at the bottom
-  of the widget
-- **Close**: click the ✕ in the top-right corner of the widget
-
-## Troubleshooting
-
-**"Failed to start login"** — almost always means Device Flow isn't enabled
-on your OAuth App, or the Client ID doesn't match the app you enabled it on.
-
-**Streak or calendar looks empty/wrong** — the widget only sees *public*
-events unless you're looking at your own authenticated account's activity;
-also note it only counts `PushEvent`s (commits pushed to GitHub), not merged
-PRs, issues, or other activity types.
-
-**Rate limit errors** — the widget uses your authenticated token (5,000
-requests/hour), so this should be rare unless multiple instances are running
-at once.
-
-**Window won't close** — click the **✕** in the corner, or end the Python
-process from your terminal/Task Manager/Activity Monitor.
-
-## Sharing this with others
-
-Anyone you send the script to needs to do steps 1–4 above with their *own*
-GitHub OAuth App and Client ID — Client IDs are safe to share/hardcode (they
-aren't secrets), but each person should generate their own so the login flow
-isn't tied to one account/app.
