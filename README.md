@@ -2,7 +2,7 @@
 
 A  desktop widget that shows your live GitHub commit streak, a scrolling contribution calendar, and your most recent repo/commit. Minimize it and it collapses into
 a small always-on-top flame icon you can drag anywhere on screen; click the
-icon to bring the full widget back.
+icon to bring the full widget back
 
 ## What it does
 
